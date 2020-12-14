@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+
+
+    
+
+<html lang="fr-FR" data-theme="dark">
+<head>
+    
+        
+<meta charset="utf-8">
+<meta name="HandheldFriendly" content="True">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="referrer" content="no-referrer-when-downgrade">
+
+<title>Interview / Retour d&#39;expérience de l&#39;usage de kubebuilder  - AMaZing stuff</title>
+<meta name="description" content="">
+
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<link rel="apple-touch-icon-precomposed" href="/favicon.png">
+
+
+
+    
+
+
+
+
+
+    
+    
+    
+
+    
+        <link rel="stylesheet" href="/css/style.b6a0d5a8bf2c050cb1f2ba408559890eef499aacdf95fed7bf8e27b6b4e97d8d.css" integrity="sha256-tqDVqL8sBQyx8rpAhVmJDu9Jmqzflf7Xv44ntrTpfY0=">
+    
+
+
+
+
+
+
+
+<meta property="og:title" content="Interview / Retour d&#39;expérience de l&#39;usage de kubebuilder " />
+<meta property="og:description" content="Yassine Tijani, contributeur K8s depuis 4ans, nous a présenté l&#39;architecture générale du code d&#39;un opérateur Kubernetes (utilisant le pattern contrôleur) en Go, avec kubebuilder." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="/posts/rex-kubebuilder/" />
+<meta property="article:published_time" content="2020-12-11T08:15:36+01:00" />
+<meta property="article:modified_time" content="2020-12-11T08:15:36+01:00" /><meta property="og:site_name" content="AMaZing stuff" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Interview / Retour d&#39;expérience de l&#39;usage de kubebuilder "/>
+<meta name="twitter:description" content="Yassine Tijani, contributeur K8s depuis 4ans, nous a présenté l&#39;architecture générale du code d&#39;un opérateur Kubernetes (utilisant le pattern contrôleur) en Go, avec kubebuilder."/>
+
+
+
+
+
+
+
+
+
+    
+</head>
+<body>
+    <a class="skip-main" href="#main">Passer au contenu principal</a>
+    <div class="container">
+        <header class="common-header"> 
+            
+                <h1 class="site-title">
+    <a href="/">AMaZing stuff</a>
+</h1>
+
+    <nav>
+        
+        
+        <a class="" href="/posts/" title="">Posts</a>
+        
+        <a class="" href="/tags/" title="">Tags</a>
+        
+    </nav>
+
+
+            
+        </header>
+        <main id="main" tabindex="-1"> 
+            
+    
+    
+    <article class="post">
+        <header class="post-header">
+            <h1 class="post-title">Interview / Retour d&#39;expérience de l&#39;usage de kubebuilder</h1>
+        </header>
+        <div class="content">
+            <h1 id="introduction">Introduction</h1>
+<p><a href="https://www.linkedin.com/in/yassine-tijani/">Yassine Tijani</a>, contributeur K8s depuis 4ans, nous a présenté l&rsquo;architecture générale du code d&rsquo;un opérateur Kubernetes (utilisant le pattern contrôleur) en Go.</p>
+<p>La présentation porte en particulier sur l&rsquo;utilisation de <a href="https://github.com/kubernetes-sigs/kubebuilder">kubebuilder</a> qui fournit (au travers d&rsquo;un outil en ligne de commande) un générateur d&rsquo;échafaudage de <strong>code</strong>.</p>
+<p>Merci à Yassine pour son temps et les <a href="https://github.com/kubernetes-sigs/cluster-api-provider-vsphere">exemples de code</a> pour étayer son propos !!</p>
+<h1 id="kubebuilder-en-5s">Kubebuilder en 5s</h1>
+<p>Le code produit par kubebuilder est d’un niveau d&rsquo;abstraction assez élevé par rapport aux rouages internes de Kubernetes et de son SDK client. Cela permet d&rsquo;être très productif dans la réalisation de l&rsquo;opérateur en se focalisant rapidement sur le code de réconciliation lui-même, souvent le cœur de la logique à implémenter. Il est donc assez haut niveau mais cela est tout à fait adapté au développement d&rsquo;opérateurs standard. Pour des cas qui nécessitent de se rapprocher des détails de l&rsquo;implémentation interne de K8s, il peut être intéressant de regarder du côté du <a href="https://github.com/kubernetes/sample-controller">sample-controller</a>, mais qui est bien plus difficile d&rsquo;accès.</p>
+<p>L&rsquo;architecture d&rsquo;un contrôleur k8s est centrée sur l&rsquo;observation de ressources en s&rsquo;abonnant à des événements (création, destruction, modification&hellip;) les concernant, en vue d&rsquo;y réagir. Pour ce faire, l&rsquo;utilisation de la librairie <a href="https://github.com/kubernetes/client-go">client-go</a> va permettre de simplifier la mécanique d&rsquo;abonnement, de cache, de reprise sur perte de connexion avec l&rsquo;APIServer&hellip;</p>
+<p><img src="/images/operator-architecture.png" alt="Architecture logicielle d&rsquo;un contrôleur" title="Architecture logicielle d'un contrôleur"></p>
+<p><em>L’architecture sous-jacente est loin d’être triviale, fort heureusement, nous n’avons pas nécessairement besoin de tout comprendre pour coder la logique d’un opérateur.</em></p>
+<h1 id="comment-utiliser-kubebuilder-">Comment utiliser kubebuilder ?</h1>
+<p>Les modes d&rsquo;utilisation du CLI kubebuilder sont multiples, voyons les principaux.</p>
+<h2 id="initialiser-un-projet-vide">Initialiser un projet vide</h2>
+<p>Après avoir initialisé un module go avec</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">$ go mod init tki.fr
+</code></pre></div><p>l’utilitaire va fabriquer le plus gros de la structure de notre opérateur :</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">$ kubebuilder init --domain tki.fr
+</code></pre></div><p>Le code produit est avant tout du code Go bien pensé, mais l&rsquo;on trouve aussi :</p>
+<ul>
+<li>un joli <code>Makefile</code> qui est une base de travail bien utile pour construire le projet, mais aussi lancer les tests et packager le produit fini</li>
+<li>des manifestes YAML/kustomize en tout genre bien utiles pour déployer et configurer notre cher opérateur (nous aurons l’occasion d’en reparler plus bas)
+À noter que le <code>main.go</code> généré contient déjà de la logique pour gérer le démarrage concurrent de plusieurs instances de l’opérateur avec un mécanisme d&rsquo;élection pour garantir à la fois la redondance et s’assurer qu’à un instant donné une seule instance n’est active.</li>
+</ul>
+<p>Apportons une petite précision sur l’option <code>domain</code> (qui vaut <code>tki.fr</code> pour l’exemple ici). C’est un espace de nommage qui va permettre de regrouper nos ressources personnalisées. À titre d’exemple, bon nombre de ressources internes de Kubernetes sont classifiées dans le <em>namespace</em> <code>k8s.io</code>.</p>
+<h2 id="créer-léchafaudage-pour-un-nouveau-type-de-ressources">Créer l&rsquo;échafaudage pour un nouveau type de ressources</h2>
+<p>L’objectif de cette étape est de faire naître et de gérer un nouveau type de ressources : définition du type (CRD), déclaration des primitives de gestion de la structure associée, notamment le <em>deep copy</em>, abonnement aux événements relatifs à ce nouveau type de ressource, jusqu&rsquo;à la production d&rsquo;un point d&rsquo;entrée, à compléter par le développeur qui va gérer la réconciliation. C&rsquo;est là qu&rsquo;il va falloir coder un comportement lorsqu&rsquo;une ressource est créée / modifiée / supprimée.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">$ kubebuilder create api --group myorg --version v1 --kind Wut
+</code></pre></div><p>L’option <code>group</code> utilisée ici désigne une sous-classification des types de ressources que l’on souhaite organiser. Pour être tout à fait précis, la ressource <code>Wut</code> créée sera donc connue et enregistrée en tant que <code>Wut</code>, en version <code>1</code>, dans l’<code>API group</code> <code>myorg.tki.fr</code>. Ces valeurs sont à mettre en regard de ressources natives bien connues comme les <code>NetworkPolicy</code> dans <code>networking.k8s.io</code> ou encore <code>StorageClass</code> dans <code>storage.k8s.io</code>.</p>
+<h1 id="un-mot-sur-la-logique-de-réconciliation">Un mot sur la logique de réconciliation</h1>
+<h2 id="traiter-les-créations-et-les-modifications-de-la-même-façon">Traiter les créations et les modifications de la même façon</h2>
+<p>La logique de réconciliation à implémenter dans un opérateur doit pouvoir se comporter correctement dans plusieurs situations : démarrage ou redémarrage de l’opérateur après un arrêt potentiellement long, événements au fil de l’eau via le mécanisme de <em>watch</em>, reprise sur interruption de la connexion avec l’APIServer… Toutes ces situations peuvent donner l’impression que l’on est face à l’ajout ou la modification d’une ressource, mais il est impossible de distinguer à coup sûr ces deux types d’événements. L’opérateur doit donc se comporter exactement de la même façon.</p>
+<h2 id="identifier-les-suppressions-et-jouer-avec-les-finalizers">Identifier les suppressions et jouer avec les finalizers</h2>
+<p>Pour détecter qu’un objet a disparu lors de la réconciliation, il est nécessaire de surveiller le champ <code>deletionTimeStamp</code> qui contiendra une valeur non nulle à partir de la suppression.</p>
+<p>Si les opérations de suppression nécessitent de garder l’objet présent dans l’APIServer, le temps de faire des opérations précises (suppression de ressources externes par exemple), l’utilisation de <em>finalizers</em> sera alors pertinente. Tant que l’opérateur décide de ne pas supprimer les <em>finalizers</em> de l’objet (un champ de type chaîne multi-valué), celui-ci sera marqué comme étant en cours de suppression mais ne disparaîtra pas, ce qui peut être utile pour garder des informations importantes, temporairement.</p>
+<h2 id="mixer-spec-et-status">Mixer spec et status</h2>
+<p>En parlant d’informations importantes, la distinction entre la partie <code>spec</code> et <code>status</code> des ressources méritent une petite précision : il doit être acceptable de perdre toute information du <code>status</code> et de le reconstituer uniquement à partir des <code>spec</code> pour traiter des cas de sauvegarde / restauration, mais aussi destruction / recréation des objets. Le <code>status</code> n’est qu’une indication que l’opérateur peut fournir en cours de son travail de réconciliation qui lui permet de tracer la progression de son travail de convergence et de garder un cache de son avancement. Mais s’il produit une information qui doit être conservée, celle-ci doit faire partie des <code>specs</code>, quitte à ce que l’attribut soit facultatif : non fourni par l’utilisateur au moment de la création de l’objet et alimenté plus tard par l’opérateur.</p>
+<h1 id="un-mot-sur-les-tests-et-la-qualité">Un mot sur les tests et la qualité</h1>
+<p>Le <code>Makefile</code> généré contient déjà les cibles pour lancer les tests.</p>
+<p>Le retour d’expérience de Yassine est qu’il joue généralement sur plusieurs typologies de tests complémentaires pour maximiser la qualité de ses opérateurs.</p>
+<h2 id="tests-unitaires">Tests unitaires</h2>
+<p>Les premiers tests à faire, en utilisant uniquement de la logique implémentée dans une fonction, ces premiers tests s’écrivent de façon tout à fait classique en suivant les pratiques Go. <strong>kubebuilder</strong> n’apporte rien de particulier à ce niveau, c’est à vous de réveiller le TTDiste qui sommeille en vous !! L’utilisation de la librairie <code>fakeclient</code> du SDK client de Kubernetes peut s’avérer cependant très utile. Elle permet de remplir artificiellement le cache du client Kubernetes avec des ressources fictives, comme si elles avaient été présentes dans Etcd et retournées par l’APIserver. Vos interactions avec le cluster sont donc bouchonnées, pensez également à bouchonner également les appels sortants si votre opérateur doit interagir avec des ressources ou API externes au cluster (exemple : réconciliation avec un DNS externe).</p>
+<h2 id="tests-dintégration">Tests d’intégration</h2>
+<p>Le squelette généré par <strong>kubebuilder</strong> produit un début de test d’intégration en utilisant <a href="http://sigs.k8s.io/controller-runtime/pkg/envtest">envtest</a> comme framework. Ce framework offre la capacité de démarrer très rapidement en local un Kubernetes minimaliste (concrètement, un <strong>Etcd</strong> et un <strong>APIServer</strong>), d’y déployer des manifestes (concrètement la définition de la CRD par exemple) avant d’effectuer n’importe quel type de commande pour effectuer des actions et procéder à tout type d’assertions. Heureuse coïncidence, l’archive de <strong>kubebuilder</strong> que l’on peut télécharger embarque les binaires de <code>kubebuilder</code>, mais aussi <code>kubectl</code>, <code>etcd</code> et <code>kube-apiserver</code>…</p>
+<p>Au travers de cette seconde solution il sera plus pertinent de tester l&rsquo;enchaînement et la cohérence de plusieurs opérations de l’opérateur : <em>webhooks</em> puis réconciliation, <em>webhooks</em> puis suppression&hellip;</p>
+<h2 id="tests-end2end">Tests End2End</h2>
+<p>Dernière option pour faire des tests de votre opérateur, le déployer dans un vrai cluster Kubernetes, plus complet. C’est notamment nécessaire s’il est nécessaire de tester des opérations qui nécessitent plus de parties mobiles, notamment le <code>scheduler</code> ou le <code>controller-manager</code>. Plusieurs solutions sont possibles, mais c’est <a href="https://github.com/kubernetes-sigs/kind">kind</a> qui présente le meilleur compromis temps de démarrage / lourdeur / représentativité dans bien des situations.</p>
+<h1 id="un-mot-sur-le-yaml">Un mot sur le YAML</h1>
+<p>Le <code>Makefile</code> produit par <strong>kubebuilder</strong> contient une cible nommée <code>manifests</code> qui permet de générer ou régénérer tout le YAML qui accompagne un opérateur.</p>
+<p>Les types de ressources sont :</p>
+<ul>
+<li>CRD</li>
+<li>des exemples de ressource (CR)</li>
+<li>le déploiement de l&rsquo;opérateur (ressource K8s de type <code>deploy</code>)</li>
+<li>quelques autres petites surprises bien agréables que nous allons découvrir juste après</li>
+<li>les paramétrages RBAC (<code>Role</code>/<code>ClusterRole</code>) nécessaires à la correcte exécution de l&rsquo;opérateur</li>
+</ul>
+<p>Sur ce dernier point, il est à noter l&rsquo;utilisation d&rsquo;annotations sous forme de commentaires dans le code qui permet de renseigner <strong>kubebuilder</strong> dans la génération des manifestes :</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#75715e">// +kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list;watch;create;patch
+</span><span style="color:#75715e">// +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=vsphereclusters,verbs=get;list;watch;create;update;patch;delete
+</span><span style="color:#75715e">// +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=vsphereclusters/status,verbs=get;update;patch
+</span><span style="color:#75715e">// +kubebuilder:rbac:groups=cluster.x-k8s.io,resources=clusters;clusters/status,verbs=get;list;watch
+</span></code></pre></div><p>Dans cet exemple, tiré de l’opérateur de l’implémentation de la <a href="https://github.com/kubernetes-sigs/cluster-api-provider-vsphere">clusterAPI pour VSphere</a>, on retrouve encodé dans les commentaires les verbes d&rsquo;action (<code>get</code>, <code>list</code>, <code>watch</code>) qui doivent être permises et les ressources concernées.</p>
+<h2 id="un-mot-sur-la-partie-http">Un mot sur la partie HTTP</h2>
+<p>Car oui, même si a priori un contrôleur a pour but principal de fonctionner comme un <em>worker</em> qui s’abonne et réagit à des événements de l’APIServer, il a plusieurs (très bonnes) raisons d’également exposer une tête HTTPS. <strong>Kubebuilder</strong> fournit toute la structure de code permettant de rapidement implémenter la logique associée au différents endpoints Web exposés.</p>
+<h2 id="observabilité">Observabilité</h2>
+<p>Un opérateur doit comme toute application qui se respecte renseigner sur son fonctionnement. Ici, l’approche adoptée est comme bien souvent d’exposer des métriques au format <a href="https://openmetrics.io/">OpenMetrics</a>, format proposé par Prometheus. L&rsquo;opérateur démarre donc en exposant ses métriques sur un endpoint HTTPS, tandis que les manifestes générés par <code>make manifests</code> contiennent la déclaration du point de collecte (<code>ServiceMonitor</code>) pour Prometheus.</p>
+<h2 id="gestion-des-versions-des-ressources">Gestion des versions des ressources</h2>
+<p>Rares sont les types de ressources dont le schéma (la structure) n’évolue pas au cours du temps. Le concept d’APIVersion présent dans tous les objets K8s permet de désigner la version dudit schéma que l’on souhaite utiliser lorsque l’on manipule une ressource.</p>
+<p>Avec l’apparition progressive de nouvelles versions dans la définition de nos ressources, vient alors la question de leur migration. Un opérateur peut prendre en charge la conversion des ressources pour les faire progressivement monter vers la version en cours (format dit Hub : le plus récent connu et persisté dans Etcd). Cette conversion est déclenchée par l’APIserver qui va invoquer un WebHook que votre opérateur peut implémenter pour effectuer les opérations non triviales des champs des objets lors d’une montée de version.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">$ kubebuilder create webhook --group myorg --version v1 --kind Wut --conversion
+</code></pre></div><p>Pour les valeurs par Défaut, la Validation et la Mutation des ressources</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">$ kubebuilder create webhook --group myorg --version v1 --kind Wut --defaulting --programmatic-validation
+</code></pre></div><p>Autres types de WebHooks qu’un opérateur peut implémenter, ceux qui valident (autorisent ou refusent) ou Modifient (patchent à la volée, en positionnant des valeurs par défaut par exemple) les ressources au moment de leur création ou modification.</p>
+<p>À nouveau, des commentaires dans le code permettent d’aider kubebuilder lorsqu’il va générer les manifestes YAML : il produit les manifestes permettant de déclarer les WebHooks auprès de l’APIServer :</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#75715e">// +kubebuilder:webhook:path=/mutate-myorg-tki-fr-v1-wut,mutating=true,failurePolicy=fail,groups=myorg.tki.fr,resources=wuts,verbs=create;update,versions=v1,name=mwut.kb.io
+</span><span style="color:#75715e">// +kubebuilder:webhook:verbs=create;update,path=/validate-myorg-tki-fr-v1-wut,mutating=false,failurePolicy=fail,groups=myorg.tki.fr,resources=wuts,versions=v1,name=vwut.kb.io
+</span></code></pre></div>
+        </div>
+        
+
+
+<div class="post-info">
+    
+        <div class="post-date">2020-12-11</div>
+    
+    <div class="post-taxonomies">
+        
+            
+                <ul class="post-tags">
+                    
+                        <li><a href="/tags/k8s">#k8s</a></li>
+                    
+                        <li><a href="/tags/golang">#golang</a></li>
+                    
+                        <li><a href="/tags/operator">#operator</a></li>
+                    
+                        <li><a href="/tags/kubebuilder">#kubebuilder</a></li>
+                    
+                </ul>
+        
+    </div>
+</div>
+
+    </article>
+
+    
+
+    
+
+
+        </main>
+        
+            <footer class="common-footer">
+    
+    
+
+    <div class="common-footer-bottom">
+        
+        <div class="copyright">
+            <p>© 2020<br>
+            Propulsé par <a target="_blank" rel="noopener noreferrer" href="https://gohugo.io/">Hugo</a>, thème <a target="_blank" rel="noopener noreferrer" href="https://github.com/mitrichius/hugo-theme-anubis">Anubis</a>.
+            </p>  
+        </div> 
+
+        
+
+    
+
+
+   
+    </div>
+</footer>
+
+        
+    </div>
+</body>
+</html>
