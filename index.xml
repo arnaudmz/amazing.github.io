@@ -18,7 +18,7 @@
       
       <guid>/posts/rex-kubebuilder/</guid>
       <description>&lt;h1 id=&#34;introduction&#34;&gt;Introduction&lt;/h1&gt;
-&lt;p&gt;&lt;a href=&#34;https://www.linkedin.com/in/yassine-tijani/&#34;&gt;Yassine Tijani&lt;/a&gt;, contributeur K8s depuis 4ans, nous a présenté l&amp;rsquo;architecture générale du code d&amp;rsquo;un opérateur Kubernetes (utilisant le pattern contrôleur) en Go.&lt;/p&gt;
+&lt;p&gt;&lt;a href=&#34;https://www.linkedin.com/in/yassine-tijani/&#34;&gt;Yassine Tijani&lt;/a&gt;, contributeur K8s depuis 4 ans, nous a présenté l&amp;rsquo;architecture générale du code d&amp;rsquo;un opérateur Kubernetes (utilisant le pattern contrôleur) en Go.&lt;/p&gt;
 &lt;p&gt;La présentation porte en particulier sur l&amp;rsquo;utilisation de &lt;a href=&#34;https://github.com/kubernetes-sigs/kubebuilder&#34;&gt;kubebuilder&lt;/a&gt; qui fournit (au travers d&amp;rsquo;un outil en ligne de commande) un générateur d&amp;rsquo;échafaudage de &lt;strong&gt;code&lt;/strong&gt;.&lt;/p&gt;
 &lt;p&gt;Merci à Yassine pour son temps et les &lt;a href=&#34;https://github.com/kubernetes-sigs/cluster-api-provider-vsphere&#34;&gt;exemples de code&lt;/a&gt; pour étayer son propos !!&lt;/p&gt;
 &lt;h1 id=&#34;kubebuilder-en-5s&#34;&gt;Kubebuilder en 5s&lt;/h1&gt;
